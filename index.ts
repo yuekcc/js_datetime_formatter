@@ -35,6 +35,7 @@ const PICKERS = {
   ss,
 };
 
+// TODO: 支持处理 yyyyMMddHHmmss
 function buildAst(str: string): string[] {
   let result: string[] = [];
   let token: string[] = [];
@@ -47,12 +48,32 @@ function buildAst(str: string): string[] {
       charType = 'sp';
     }
 
-    if (/[yMdHms]/.test(char)) {
-      charType = 'placeholder';
+    if (/[y]/.test(char)) {
+      charType = 'y';
+    }
+
+    if (/[M]/.test(char)) {
+      charType = 'M';
+    }
+
+    if (/[d]/.test(char)) {
+      charType = 'd';
+    }
+
+    if (/[H]/.test(char)) {
+      charType = 'H';
+    }
+
+    if (/[m]/.test(char)) {
+      charType = 'm';
+    }
+
+    if (/[s]/.test(char)) {
+      charType = 's';
     }
 
     if (/[X]/.test(char)) {
-      charType = 'timezone';
+      charType = 'X';
     }
 
     if (charType === lastType || lastType === '') {
@@ -75,7 +96,7 @@ const formatters: Record<string, (x: Date) => string> = {};
 export function compile(layout: string): (x: Date) => string {
   const ast = buildAst(layout);
 
-  const formatter = function format(d: Date) {
+  const formatter = function format(d: Date, ...args: any[]) {
     let result = '';
     for (const p of ast) {
       if (p === ' ' || p === '/' || p === '-' || p == ':') {
@@ -83,8 +104,8 @@ export function compile(layout: string): (x: Date) => string {
         continue;
       }
 
-      const picker = PICKERS[p];
-      result += picker.call(null, d);
+      const picker: (x: Date) => string = PICKERS[p];
+      result += picker.apply(null, [d, ...args]);
     }
 
     return result;
@@ -94,44 +115,11 @@ export function compile(layout: string): (x: Date) => string {
   return formatter;
 }
 
-// function formatWithReduce(x: Date, layout: string) {
-//   let parts = [
-//     ['yyyy', _padZero(x.getFullYear())],
-//     ['MM', _padZero(x.getMonth() + 1)],
-//     ['dd', _padZero(x.getDate())],
-//     ['HH', _padZero(x.getHours())],
-//     ['mm', _padZero(x.getMinutes())],
-//     ['ss', _padZero(x.getSeconds())],
-//   ];
+export function formatDateTime(dateObject: Date, layout = 'yyyy-MM-dd HH:mm:ss'): string {
+  let format = formatters[layout];
+  if (!format) {
+    format = compile(layout);
+  }
 
-//   return parts.reduce((str, part) => {
-//     return str.replace(part[0], part[1]);
-//   }, layout);
-// }
-
-// const layout = 'yyyy-MM-dd HH:mm:ss';
-// const format = compile(layout);
-
-// const now = new Date();
-// console.log('format', format(now));
-// console.log('formatWithReduce', formatWithReduce(now, layout));
-
-// for (let i = 0; i < 10000; i++) {
-//   format(now);
-// }
-
-// for (let i = 0; i < 10000; i++) {
-//   formatWithReduce(now, layout);
-// }
-
-// console.time('format 100000 times with complied formatter');
-// for (let i = 0; i < 100000; i++) {
-//   format(now);
-// }
-// console.timeEnd('format 100000 times with complied formatter');
-
-// console.time('format 100000 times with formatWithReduce');
-// for (let i = 0; i < 100000; i++) {
-//   formatWithReduce(now, layout);
-// }
-// console.timeEnd('format 100000 times with formatWithReduce');
+  return format(dateObject);
+}
